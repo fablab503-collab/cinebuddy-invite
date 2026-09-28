@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="color-scheme" content="light dark">
+<title>Invitation CineBuddy</title>
+<style>
+  :root {
+    --velvet: #9b1c2e; --velvet-dark: #6e1020; --ink: #1d1b1f; --muted: #6b6570;
+    --card: #ffffff; --bg: #f6f1ef; --line: #e7dfdc; --ok: #1f7a4d;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --ink: #f4eff0; --muted: #b3aab0; --card: #231d21; --bg: #151114; --line: #3a3035; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 16px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+         background: var(--bg); color: var(--ink); }
+  header { background: linear-gradient(160deg, var(--velvet), var(--velvet-dark)); color: #fff;
+           padding: 28px 20px 64px; text-align: center; }
+  header .brand { font-weight: 700; letter-spacing: .02em; opacity: .9; }
+  header h1 { margin: 8px 0 0; font-size: 1.35rem; font-weight: 650; }
+  main { max-width: 520px; margin: -48px auto 32px; padding: 0 16px; }
+  .card { background: var(--card); border-radius: 22px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,.08);
+          border: 1px solid var(--line); margin-bottom: 16px; }
+  .film { display: flex; gap: 16px; align-items: flex-start; }
+  .film img { width: 92px; border-radius: 12px; flex: none; background: var(--line); aspect-ratio: 2 / 3; object-fit: cover; }
+  .film h2 { margin: 0 0 6px; font-size: 1.25rem; }
+  .meta { color: var(--muted); margin: 2px 0; }
+  .people { margin-top: 14px; display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip { background: var(--bg); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; font-size: .9rem; }
+  label { display: block; font-weight: 600; margin-bottom: 6px; }
+  input { width: 100%; font: inherit; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line);
+          background: var(--bg); color: var(--ink); }
+  .answers { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 12px; }
+  button, .button { font: inherit; font-weight: 600; border: 0; border-radius: 999px; padding: 12px 10px; cursor: pointer;
+           text-align: center; text-decoration: none; display: block; }
+  .yes { background: var(--velvet); color: #fff; }
+  .maybe, .no { background: var(--bg); color: var(--ink); border: 1px solid var(--line); }
+  .app { background: var(--ink); color: var(--card); margin-top: 10px; }
+  .store { background: transparent; color: var(--velvet); border: 1px solid var(--velvet); margin-top: 10px; }
+  .done { color: var(--ok); font-weight: 600; margin-top: 12px; }
+  .error { color: #c0392b; margin-top: 10px; }
+  .note { font-size: .88rem; color: var(--muted); }
+  footer { text-align: center; font-size: .8rem; color: var(--muted); padding: 0 16px 32px; }
+  footer a { color: inherit; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">CineBuddy</div>
+  <h1 id="headline">On vous invite au cinéma</h1>
+</header>
+<main>
+  <section class="card" id="loading"><p class="meta">Chargement de l’invitation…</p></section>
+
+  <section class="card" id="missing" hidden>
+    <h2>Invitation introuvable</h2>
+    <p class="meta">Ce lien n’existe plus ou a été mal copié. Demandez-en un nouveau à la personne qui vous a invité.</p>
+  </section>
+
+  <section class="card" id="outing" hidden>
+    <div class="film">
+      <img id="poster" alt="" hidden>
+      <div>
+        <h2 id="film"></h2>
+        <p class="meta" id="when"></p>
+        <p class="meta" id="where"></p>
+        <p class="meta" id="owner"></p>
+      </div>
+    </div>
+    <div class="people" id="people"></div>
+  </section>
+
+  <section class="card" id="answer" hidden>
+    <form id="form">
+      <label for="name">Votre prénom</label>
+      <input id="name" name="name" autocomplete="given-name" maxlength="40" required placeholder="Léa">
+      <div class="answers">
+        <button type="submit" class="yes" value="yes">Je viens</button>
+        <button type="submit" class="maybe" value="maybe">Peut-être</button>
+        <button type="submit" class="no" value="no">Je ne peux pas</button>
+      </div>
+    </form>
+    <p class="done" id="done" hidden></p>
+    <p class="error" id="error" hidden></p>
+    <p class="note">Seuls votre prénom et votre réponse sont gardés, jusqu’à la fin de la sortie.</p>
+  </section>
+
+  <section class="card">
+    <strong>Vous avez l’app CineBuddy ?</strong>
+    <p class="note">Ouvrez l’invitation dans l’app pour rejoindre la discussion du groupe.</p>
+    <a class="button app" id="open-app" href="#">Ouvrir dans CineBuddy</a>
+    <a class="button store" href="https://apps.apple.com/fr/app/id6790798514">Télécharger CineBuddy sur iPhone</a>
+    <p class="note">Rendez-vous au cinéma, dans le hall. Ne partagez ni votre adresse ni votre numéro de téléphone.</p>
+  </section>
+</main>
+<footer>
+  CineBuddy, sorties ciné entre amis · <a href="https://cinebuddy-vert.vercel.app/legal/privacy/">Confidentialité</a><br>
+  Données des films : TMDB. CineBuddy n’est ni approuvé ni certifié par TMDB.
+</footer>
+<script>
+  // Filled when the page is published (scripts/publish-invite-page.sh). The publishable key is public
+  // by design: the database only lets this page call outing_preview and answer_invite.
+  const SUPABASE_URL = "https://ymyksvnpluwjvnqebctd.supabase.co";
+  const SUPABASE_KEY = "sb_publishable_ht_xLKb-oxIi_ZacBtYcYQ_Oyi2Air_";
+
+  const token = new URLSearchParams(location.search).get("t") || "";
+  const $ = (id) => document.getElementById(id);
+  const show = (id, on = true) => { $(id).hidden = !on; };
+
+  async function rpc(name, body) {
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${name}`, {
+      method: "POST",
+      headers: { "apikey": SUPABASE_KEY, "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const data = await response.json().catch(() => null);
+    if (!response.ok) throw new Error((data && (data.message || data.msg)) || `HTTP ${response.status}`);
+    return data;
+  }
+
+  function render(outing) {
+    const when = new Date(outing.starts_at);
+    $("film").textContent = outing.film || "Film surprise";
+    $("headline").textContent = outing.owner_name ? `${outing.owner_name} vous invite au cinéma` : "On vous invite au cinéma";
+    $("when").textContent = when.toLocaleString("fr-FR", { timeZone: "Europe/Paris", weekday: "long", day: "numeric",
+                                                         month: "long", hour: "2-digit", minute: "2-digit" });
+    $("where").textContent = [outing.cinema_name, outing.cinema_address].filter(Boolean).join(" · ");
+    $("owner").textContent = outing.owner_name ? `Organisé par ${outing.owner_name}` : "";
+    if (outing.poster_path) {
+      $("poster").src = `https://image.tmdb.org/t/p/w342${outing.poster_path}`;
+      show("poster");
+    }
+    const people = $("people");
+    people.replaceChildren();
+    const names = [...(outing.members || []), ...(outing.guests || [])];
+    for (const name of names) {
+      const chip = document.createElement("span");
+      chip.className = "chip";
+      chip.textContent = name;
+      people.append(chip);
+    }
+    const count = document.createElement("span");
+    count.className = "chip";
+    count.textContent = names.length > 1 ? `${names.length} personnes` : "1 personne";
+    if (names.length) people.prepend(count);
+    document.title = `${outing.film || "Sortie ciné"} · Invitation CineBuddy`;
+    show("outing");
+    show("answer");
+  }
+
+  async function load() {
+    $("open-app").href = `com.danielmadac.cinebuddy://join/${encodeURIComponent(token)}`;
+    if (!/^[A-Za-z0-9]{16,64}$/.test(token)) { show("loading", false); show("missing"); return; }
+    try {
+      const outing = await rpc("outing_preview", { p_token: token });
+      show("loading", false);
+      if (!outing) { show("missing"); return; }
+      render(outing);
+      const saved = localStorage.getItem("cinebuddy-name");
+      if (saved) $("name").value = saved;
+    } catch (error) {
+      show("loading", false);
+      show("missing");
+    }
+  }
+
+  $("form").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const answer = event.submitter ? event.submitter.value : "yes";
+    const name = $("name").value.trim();
+    show("error", false);
+    if (!name) { $("name").focus(); return; }
+    try {
+      const outing = await rpc("answer_invite", { p_token: token, p_first_name: name, p_answer: answer });
+      try { localStorage.setItem("cinebuddy-name", name); } catch (e) {}
+      if (outing) render(outing);
+      $("done").textContent = answer === "yes" ? `C’est noté, ${name} : à bientôt au cinéma !`
+        : answer === "maybe" ? `C’est noté, ${name} : vous pourrez changer d’avis ici.` : `C’est noté, ${name}. Merci d’avoir répondu.`;
+      show("done");
+    } catch (error) {
+      const text = String(error.message || error);
+      $("error").textContent = text.includes("outing_full") ? "Cette sortie est complète."
+        : text.includes("outing_over") ? "Cette sortie est déjà passée."
+        : "La réponse n’a pas pu être envoyée. Réessayez dans un instant.";
+      show("error");
+    }
+  });
+
+  load();
+</script>
+</body>
+</html>
