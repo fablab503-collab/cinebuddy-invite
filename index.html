@@ -43,6 +43,13 @@
   .done { color: var(--ok); font-weight: 600; margin-top: 12px; }
   .error { color: #c0392b; margin-top: 10px; }
   .note { font-size: .88rem; color: var(--muted); }
+  .options { margin: 4px 0 14px; display: grid; gap: 8px; }
+  .option { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border: 1px solid var(--line);
+            border-radius: 14px; background: var(--bg); cursor: pointer; font-weight: 400; margin: 0; }
+  .option input { width: 22px; height: 22px; margin: 2px 0 0; accent-color: var(--velvet); flex: none; }
+  .option.chosen { border-color: var(--velvet); }
+  .option strong { display: block; }
+  .option small { color: var(--muted); display: block; }
   footer { text-align: center; font-size: .8rem; color: var(--muted); padding: 0 16px 32px; }
   footer a { color: inherit; }
   [hidden] { display: none !important; }
@@ -76,6 +83,11 @@
 
   <section class="card" id="answer" hidden>
     <form id="form">
+      <div id="choices" hidden>
+        <label>Quelles séances vous vont ?</label>
+        <p class="note" id="choices-note">Cochez toutes celles qui vous conviennent : l’organisateur choisira.</p>
+        <div class="options" id="options"></div>
+      </div>
       <label for="name">Votre prénom</label>
       <input id="name" name="name" autocomplete="given-name" maxlength="40" required placeholder="Léa">
       <div class="answers">
@@ -86,7 +98,7 @@
     </form>
     <p class="done" id="done" hidden></p>
     <p class="error" id="error" hidden></p>
-    <p class="note">Seuls votre prénom et votre réponse sont gardés, jusqu’à la fin de la sortie.</p>
+    <p class="note">Seuls votre prénom, votre réponse et vos choix sont gardés, jusqu’à la fin de la sortie.</p>
   </section>
 
   <section class="card">
@@ -122,7 +134,42 @@
     return data;
   }
 
+  let current = null;
+  const fmtWhen = (iso) => new Date(iso).toLocaleString("fr-FR", { timeZone: "Europe/Paris", weekday: "long", day: "numeric",
+                                                              month: "long", hour: "2-digit", minute: "2-digit" });
+
+  function renderOptions(outing) {
+    const list = outing.options || [];
+    const box = $("options");
+    const ticked = new Set([...box.querySelectorAll("input:checked")].map((i) => i.value));
+    box.replaceChildren();
+    show("choices", list.length > 1);
+    if (list.length < 2) return;
+    const me = ($("name").value || localStorage.getItem("cinebuddy-name") || "").trim().toLowerCase();
+    $("choices-note").textContent = outing.chosen_option
+      ? "L’organisateur a choisi la séance en rouge. Vous pouvez encore dire si elle vous va."
+      : "Cochez toutes celles qui vous conviennent : l’organisateur choisira.";
+    for (const o of list) {
+      const row = document.createElement("label");
+      row.className = "option" + (outing.chosen_option === o.id ? " chosen" : "");
+      const box2 = document.createElement("input");
+      box2.type = "checkbox"; box2.value = o.id;
+      box2.checked = ticked.has(o.id) || (!!me && (o.votes || []).some((v) => v.toLowerCase() === me));
+      const text = document.createElement("span");
+      const title = document.createElement("strong");
+      title.textContent = (outing.chosen_option === o.id ? "✓ " : "") + o.cinema_name;
+      const when = document.createElement("small");
+      when.textContent = fmtWhen(o.starts_at);
+      const votes = document.createElement("small");
+      votes.textContent = (o.votes || []).length ? `${o.votes.length} · ${o.votes.join(", ")}` : "Personne pour l’instant";
+      text.append(title, when, votes);
+      row.append(box2, text);
+      box.append(row);
+    }
+  }
+
   function render(outing) {
+    current = outing;
     const when = new Date(outing.starts_at);
     $("film").textContent = outing.film || "Film surprise";
     $("headline").textContent = outing.owner_name ? `${outing.owner_name} vous invite au cinéma` : "On vous invite au cinéma";
@@ -147,6 +194,12 @@
     count.className = "chip";
     count.textContent = names.length > 1 ? `${names.length} personnes` : "1 personne";
     if (names.length) people.prepend(count);
+    const several = (outing.options || []).length > 1 && !outing.chosen_option;
+    if (several) {
+      $("when").textContent = `${outing.options.length} séances proposées : choisissez ci-dessous`;
+      $("where").textContent = "";
+    }
+    renderOptions(outing);
     document.title = `${outing.film || "Sortie ciné"} · Invitation CineBuddy`;
     show("outing");
     show("answer");
@@ -161,7 +214,7 @@
       if (!outing) { show("missing"); return; }
       render(outing);
       const saved = localStorage.getItem("cinebuddy-name");
-      if (saved) $("name").value = saved;
+      if (saved) { $("name").value = saved; renderOptions(outing); }
     } catch (error) {
       show("loading", false);
       show("missing");
@@ -175,7 +228,16 @@
     show("error", false);
     if (!name) { $("name").focus(); return; }
     try {
-      const outing = await rpc("answer_invite", { p_token: token, p_first_name: name, p_answer: answer });
+      const picked = [...$("options").querySelectorAll("input:checked")].map((i) => i.value);
+      const several = current && (current.options || []).length > 1;
+      if (several && answer !== "no" && !picked.length) {
+        $("error").textContent = "Cochez au moins une séance, ou répondez « Je ne peux pas ».";
+        show("error");
+        return;
+      }
+      const outing = several
+        ? await rpc("answer_invite_options", { p_token: token, p_first_name: name, p_answer: answer, p_options: picked })
+        : await rpc("answer_invite", { p_token: token, p_first_name: name, p_answer: answer });
       try { localStorage.setItem("cinebuddy-name", name); } catch (e) {}
       if (outing) render(outing);
       $("done").textContent = answer === "yes" ? `C’est noté, ${name} : à bientôt au cinéma !`
